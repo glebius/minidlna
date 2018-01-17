@@ -5,7 +5,8 @@ int monitor_remove_directory(int fd, const char * path);
 
 #if defined(HAVE_INOTIFY) || defined(HAVE_KQUEUE)
 #define	HAVE_WATCH 1
-int	add_watch(int, const char *);
+int	monitor_add_watch(int, const char *);
+int	monitor_remove_watch(int, const char *);
 #endif
 
 #ifdef HAVE_INOTIFY

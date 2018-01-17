@@ -214,7 +214,7 @@ err1:
 }
 
 int
-add_watch(int fd __unused, const char *path)
+monitor_add_watch(int fd __unused, const char *path)
 {
 	struct watch *wt;
 	struct event *ev;
@@ -251,6 +251,13 @@ add_watch(int fd __unused, const char *path)
 	return (0);
 }
 
+int
+monitor_remove_watch(int fd __unused, const char *path __unused)
+{
+
+	return (0);
+}
+
 /*
  * XXXGL: this function has too much copypaste of inotify_create_watches().
  * We need to split out inotify stuff from monitor.c into monitor_inotify.c,
@@ -267,9 +274,9 @@ kqueue_monitor_start()
 	DPRINTF(E_DEBUG, L_INOTIFY, "kqueue monitoring starting\n");
 	for (media_path = media_dirs; media_path != NULL;
 	    media_path = media_path->next)
-		add_watch(0, media_path->path);
+		monitor_add_watch(0, media_path->path);
 	sql_get_table(db, "SELECT PATH from DETAILS where MIME is NULL and PATH is not NULL", &result, &rows, NULL);
 	for (i = 1; i <= rows; i++ )
-		add_watch(0, result[i]);
+		monitor_add_watch(0, result[i]);
 	sqlite3_free_table(result);
 }

@@ -490,7 +490,12 @@ AC_CHECK_HEADERS([arpa/inet.h asm/unistd.h endian.h machine/endian.h fcntl.h lib
 test x"$ac_cv_header_poll_h" != x"yes" && AC_MSG_ERROR([poll.h not found or not usable])
 test x"$ac_cv_header_sys_queue_h" != x"yes" && AC_MSG_ERROR([sys/queue.h not found or not usable])
 
-AC_CHECK_FUNCS(inotify_init, AC_DEFINE(HAVE_INOTIFY,1,[Whether kernel has inotify support]), [
+AC_CHECK_FUNCS(inotify_init, 
+[
+    AC_DEFINE(HAVE_INOTIFY,1,[Whether kernel has inotify support])
+    AM_CONDITIONAL(HAVE_INOTIFY, true)
+],
+[
     AC_MSG_CHECKING([for __NR_inotify_init syscall])
     AC_COMPILE_IFELSE(
          [AC_LANG_PROGRAM(
@@ -506,9 +511,11 @@ AC_CHECK_FUNCS(inotify_init, AC_DEFINE(HAVE_INOTIFY,1,[Whether kernel has inotif
          [
              AC_MSG_RESULT([yes])
              AC_DEFINE(HAVE_INOTIFY,1,[Whether kernel has inotify support])
+             AM_CONDITIONAL(HAVE_INOTIFY, true)
          ],
          [
              AC_MSG_RESULT([no])
+             AM_CONDITIONAL(HAVE_INOTIFY, false)
          ])
 ])
 
