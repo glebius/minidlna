@@ -259,13 +259,12 @@ monitor_remove_watch(int fd __unused, const char *path __unused)
 }
 
 /*
- * XXXGL: this function has too much copypaste of inotify_create_watches().
- * We need to split out inotify stuff from monitor.c into monitor_inotify.c,
- * compile the latter on Linux and this file on FreeBSD, and keep monitor.c
- * itself platform independent.
+ * XXXGL: this function has some copypaste with inotify_create_watches().
+ * We need to push more code to platform independent start_monitor()
+ * in minidlna.c.
  */
 void
-kqueue_monitor_start()
+monitor_start()
 {
 	struct media_dir_s *media_path;
 	char **result;
@@ -279,4 +278,9 @@ kqueue_monitor_start()
 	for (i = 1; i <= rows; i++ )
 		monitor_add_watch(0, result[i]);
 	sqlite3_free_table(result);
+}
+
+void
+monitor_stop()
+{
 }

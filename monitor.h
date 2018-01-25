@@ -7,13 +7,6 @@ int monitor_remove_directory(int fd, const char * path);
 #define	HAVE_WATCH 1
 int	monitor_add_watch(int, const char *);
 int	monitor_remove_watch(int, const char *);
-#endif
-
-#ifdef HAVE_INOTIFY
-void *
-start_inotify();
-#endif
-
-#ifdef HAVE_KQUEUE
-void	kqueue_monitor_start();
+void 	monitor_start();
+void 	monitor_stop();
 #endif

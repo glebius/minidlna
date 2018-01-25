@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <libgen.h>
@@ -69,6 +70,7 @@ struct watch
 
 static struct watch *watches;
 static struct watch *lastwatch = NULL;
+static pthread_t thread_id;
 
 static char *
 get_path_from_wd(int wd)
@@ -253,8 +255,8 @@ inotify_remove_watches(int fd)
 	return rm_watches;
 }
 
-void *
-start_inotify(void)
+static void *
+inotify_thread(void *arg)
 {
 	struct pollfd pollfds[1];
 	char buffer[BUF_LEN];
@@ -274,17 +276,10 @@ start_inotify(void)
 	if ( pollfds[0].fd < 0 )
 		DPRINTF(E_ERROR, L_INOTIFY, "inotify_init() failed!\n");
 
-	while( GETFLAG(SCANNING_MASK) )
-	{
-		if( quitting )
-			goto quitting;
-		sleep(1);
-	}
 	inotify_create_watches(pollfds[0].fd);
 	if (setpriority(PRIO_PROCESS, 0, 19) == -1)
 		DPRINTF(E_WARN, L_INOTIFY,  "Failed to reduce inotify thread priority\n");
 	sqlite3_release_memory(1<<31);
-	lav_register_all();
 
 	while( !quitting )
 	{
@@ -379,8 +374,31 @@ start_inotify(void)
 		}
 	}
 	inotify_remove_watches(pollfds[0].fd);
-quitting:
 	close(pollfds[0].fd);
 
 	return 0;
+}
+
+void
+monitor_start(void)
+{
+
+	if (!sqlite3_threadsafe() || sqlite3_libversion_number() < 3005001) {
+		DPRINTF(E_ERROR, L_GENERAL, "SQLite library is not threadsafe!"
+		    "Inotify will be disabled.\n");
+		return;
+	}
+	if (pthread_create(&thread_id, NULL, inotify_thread, NULL) != 0)
+		DPRINTF(E_FATAL, L_GENERAL, "pthread_create() failed [%s]\n",
+		    strerror(errno));
+}
+
+void
+monitor_stop(void)
+{
+
+	if (thread_id != 0) {
+		pthread_kill(thread_id, SIGCHLD);
+		pthread_join(thread_id, NULL);
+	}
 }
