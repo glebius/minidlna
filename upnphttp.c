@@ -1762,7 +1762,7 @@ SendResp_resizedimg(struct upnphttp * h, char * object)
 	if( ret != 2 )
 	{
 		Send500(h);
-		return;
+		goto resized_error;
 	}
 	/* Figure out the best destination resolution we can use */
 	dstw = width;
