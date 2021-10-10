@@ -209,6 +209,8 @@ vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 	// -- following tags are muliples
 	// COMPOSER, ARRANGER, LYRICIST, AUTHOR, CONDUCTOR, PERFORMER, ENSEMBLE, PART
 	// PARTNUMBER, GENRE, DATE, LOCATION, COMMENT
+	// -- In addition, some software (e.g. Windows Media Player) insists on using YEAR
+	// -- rather than DATE, so support this where DATE is not available for reasons of usefulness.
 	if(!strncasecmp(strbuf, "ALBUM=", 6))
 	{
 		if( *(strbuf+6) )
@@ -250,7 +252,8 @@ vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 		if( *(strbuf+6) )
 			psong->genre = strdup(strbuf + 6);
 	}
-	else if(!strncasecmp(strbuf, "DATE=", 5))
+	else if(!strncasecmp(strbuf, "DATE=", 5) ||
+		   (!strncasecmp(strbuf, "YEAR=", 5) && psong->year == 0))
 	{
 		if(length >= (5 + 10) &&
 		   isdigit(strbuf[5 + 0]) && isdigit(strbuf[5 + 1]) && ispunct(strbuf[5 + 2]) &&
