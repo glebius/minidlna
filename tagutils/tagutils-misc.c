@@ -203,7 +203,12 @@ vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 	}
 	strncpy(strbuf, comment, length);
 	strbuf[length] = '\0';
-
+	
+	// Xiph.org lists recommended field names for interoperability between programs.
+	// Beyond these software may use other tag names, and because the files we are
+	// tasked with reading may come from a variety of sources we include other commonly
+	// used tags where we can.
+	// https://xiph.org/vorbis/doc/v-comment.html
 	// ALBUM, ARTIST, PUBLISHER, COPYRIGHT, DISCNUMBER, ISRC, EAN/UPN, LABEL, LABELNO,
 	// LICENSE, OPUS, SOURCEMEDIA, TITLE, TRACKNUMBER, VERSION, ENCODED-BY, ENCODING,
 	// -- following tags are muliples
@@ -234,6 +239,16 @@ vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 	{
 		psong->contributor_sort[ROLE_BAND] = strdup(strbuf + 16);
 	}
+	else if(!strncasecmp(strbuf, "COMPOSER=", 9))
+	{
+		if( *(strbuf+9) )
+			psong->contributor[ROLE_COMPOSER] = strdup(strbuf + 9);
+	}
+	else if(!strncasecmp(strbuf, "CONDUCTOR=", 10))
+	{
+		if( *(strbuf+10) )
+			psong->contributor[ROLE_CONDUCTOR] = strdup(strbuf + 10);
+	}
 	else if(!strncasecmp(strbuf, "TITLE=", 6))
 	{
 		if( *(strbuf+6) )
@@ -243,9 +258,17 @@ vc_scan(struct song_metadata *psong, const char *comment, const size_t length)
 	{
 		psong->track = atoi(strbuf + 12);
 	}
+	else if(!strncasecmp(strbuf, "TRACKTOTAL=", 11))
+	{
+		psong->total_tracks = atoi(strbuf + 11);
+	}
 	else if(!strncasecmp(strbuf, "DISCNUMBER=", 11))
 	{
 		psong->disc = atoi(strbuf + 11);
+	}
+	else if(!strncasecmp(strbuf, "DISCTOTAL=", 10))
+	{
+		psong->total_discs = atoi(strbuf + 10);
 	}
 	else if(!strncasecmp(strbuf, "GENRE=", 6))
 	{
