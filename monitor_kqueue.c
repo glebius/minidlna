@@ -69,6 +69,7 @@ dir_vnode_process(struct event *ev, u_int fflags)
 		close(ev->fd);
 		free(wt);
 		monitor_remove_directory(0, path);
+		free(path);
 		return;
 	} else if ((fflags & (NOTE_WRITE | NOTE_LINK)) ==
 	    (NOTE_WRITE | NOTE_LINK)) {
