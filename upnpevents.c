@@ -86,11 +86,10 @@ struct subscriber {
 struct upnp_event_notify {
 	struct event ev;
 	LIST_ENTRY(upnp_event_notify) entries;
-	enum { EConnecting,
+	enum { EConnecting = 1,
 	       ESending,
 	       EWaitingForResponse,
-	       EFinished,
-	       EError } state;
+	} state;
 	struct subscriber * sub;
 	char * buffer;
 	int buffersize;
@@ -310,6 +309,24 @@ error:
 	free(obj);
 }
 
+static void upnp_event_free_notify(struct upnp_event_notify *obj)
+{
+
+	event_module.del(&obj->ev, EV_FLAG_CLOSING);
+	close(obj->ev.fd);
+
+	free(obj->buffer);
+	LIST_REMOVE(obj, entries);
+
+	/* Free the subscriber from the list if there was an error. */
+	if (obj->sub != NULL) {
+		LIST_REMOVE(obj->sub, entries);
+		nsubscribers--;
+		free(obj->sub);
+	}
+	free(obj);
+}
+
 static void upnp_event_prepare(struct upnp_event_notify * obj)
 {
 	static const char notifymsg[] = 
@@ -362,8 +379,7 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 		i = send(obj->ev.fd, obj->buffer + obj->sent, obj->tosend - obj->sent, 0);
 		if(i<0) {
 			DPRINTF(E_WARN, L_HTTP, "%s: send(): %s\n", "upnp_event_send", strerror(errno));
-			obj->state = EError;
-			event_module.del(&obj->ev, 0);
+			upnp_event_free_notify(obj);
 			return;
 		}
 		obj->sent += i;
@@ -376,26 +392,30 @@ static void upnp_event_send(struct upnp_event_notify * obj)
 	}
 }
 
+/*
+ * Received _some_ reply on our NOTIFY.  Free the notify object, but keep
+ * the subscriber if receive was successful.
+ */
 static void upnp_event_recv(struct upnp_event_notify * obj)
 {
 	int n;
+
+	assert(obj->sub);
+
 	n = recv(obj->ev.fd, obj->buffer, obj->buffersize, 0);
 	if(n<0) {
 		DPRINTF(E_ERROR, L_HTTP, "%s: recv(): %s\n", "upnp_event_recv", strerror(errno));
-		obj->state = EError;
-		event_module.del(&obj->ev, 0);
+		upnp_event_free_notify(obj);
 		return;
 	}
 	DPRINTF(E_DEBUG, L_HTTP, "%s: (%dbytes) %.*s\n", "upnp_event_recv",
 	       n, n, obj->buffer);
-	obj->state = EFinished;
-	event_module.del(&obj->ev, 0);
-	if(obj->sub)
-	{
+
+	if (++obj->sub->seq == 0)
 		obj->sub->seq++;
-		if (!obj->sub->seq)
-			obj->sub->seq++;
-	}
+	obj->sub->notify = NULL;
+	obj->sub = NULL;
+	upnp_event_free_notify(obj);
 }
 
 static void
@@ -415,44 +435,18 @@ upnp_event_process_notify(struct event *ev)
 	case EWaitingForResponse:
 		upnp_event_recv(obj);
 		break;
-	case EFinished:
-		close(obj->ev.fd);
-		obj->ev.fd = -1;
-		break;
 	default:
-		DPRINTF(E_ERROR, L_HTTP, "upnp_event_process_notify: unknown state\n");
+		DPRINTF(E_ERROR, L_HTTP, "obj %p unknown state %d\n",
+		    obj, obj->state);
 	}
 }
 
 void upnpevents_gc(void)
 {
-	struct upnp_event_notify * obj;
-	struct upnp_event_notify * next;
 	struct subscriber * sub;
 	struct subscriber * subnext;
 	time_t curtime;
 
-	obj = notifylist.lh_first;
-	while(obj != NULL) {
-		next = obj->entries.le_next;
-		if(obj->state == EError || obj->state == EFinished) {
-			if(obj->ev.fd >= 0) {
-				close(obj->ev.fd);
-			}
-			if(obj->sub)
-				obj->sub->notify = NULL;
-			/* remove also the subscriber from the list if there was an error */
-			if(obj->state == EError && obj->sub) {
-				LIST_REMOVE(obj->sub, entries);
-				nsubscribers--;
-				free(obj->sub);
-			}
-			free(obj->buffer);
-			LIST_REMOVE(obj, entries);
-			free(obj);
-		}
-		obj = next;
-	}
 	/* remove timed-out subscribers */
 	curtime = time(NULL);
 	for(sub = subscriberlist.lh_first; sub != NULL; ) {
