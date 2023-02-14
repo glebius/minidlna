@@ -258,9 +258,6 @@ upnp_event_create_notify(struct subscriber *sub)
 		       strerror(errno));
 		goto error;
 	}
-	if(sub)
-		sub->notify = obj;
-	LIST_INSERT_HEAD(&notifylist, obj, entries);
 
 	memset(&addr, 0, sizeof(addr));
 	i = 0;
@@ -293,16 +290,17 @@ upnp_event_create_notify(struct subscriber *sub)
 	DPRINTF(E_DEBUG, L_HTTP, "'%s' %hu '%s'\n",
 	       obj->addrstr, port, obj->path);
 	obj->state = EConnecting;
-	obj->ev = (struct event ){ .fd = s, .rdwr = EVENT_WRITE,
-		.process = upnp_event_process_notify, .data = obj };
-	event_module.add(&obj->ev);
-	if(connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-		if(errno != EINPROGRESS && errno != EWOULDBLOCK) {
-			DPRINTF(E_ERROR, L_HTTP, "connect(): %s\n", strerror(errno));
-			obj->state = EError;
-			event_module.del(&obj->ev, 0);
-		}
+	if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0 &&
+	    errno != EINPROGRESS && errno != EWOULDBLOCK) {
+		DPRINTF(E_ERROR, L_HTTP, "connect(): %s\n", strerror(errno));
+		goto error;
 	}
+	obj->ev = (struct event ){ .fd = s, .rdwr = EVENT_WRITE,
+	    .process = upnp_event_process_notify, .data = obj };
+	event_module.add(&obj->ev);
+
+	sub->notify = obj;
+	LIST_INSERT_HEAD(&notifylist, obj, entries);
 
 	return;
 
