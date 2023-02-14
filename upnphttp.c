@@ -719,6 +719,7 @@ check_event(struct upnphttp *h)
 			/* Missing or invalid CALLBACK : 412 Precondition Failed.
 			 * If CALLBACK header is missing or does not contain a valid HTTP URL,
 			 * the publisher must respond with HTTP error 412 Precondition Failed*/
+			DPRINTF(E_DEBUG, L_HTTP, "Precondition Failed: Callback %s NT %s\n", h->req_Callback, h->req_NT);
 			BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
 		}
 		else
@@ -758,6 +759,7 @@ check_event(struct upnphttp *h)
 	}
 	else
 	{
+		DPRINTF(E_DEBUG, L_HTTP, "Precondition Failed: Callback & SID NULL");
 		BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
 	}
 
@@ -802,6 +804,7 @@ ProcessHTTPSubscribe_upnphttp(struct upnphttp * h, const char * path)
 			   412 Precondition Failed. If a SID does not correspond to a known,
 			   un-expired subscription, the publisher must respond
 			   with HTTP error 412 Precondition Failed. */
+			DPRINTF(E_DEBUG, L_HTTP, "Precondition Failed: renewSubscription failed");
 			BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
 		}
 		else
@@ -827,9 +830,10 @@ ProcessHTTPUnSubscribe_upnphttp(struct upnphttp * h, const char * path)
 	type = check_event(h);
 	if (type != E_INVALID)
 	{
-		if(upnpevents_removeSubscriber(h->req_SID, h->req_SIDLen) < 0)
+		if(upnpevents_removeSubscriber(h->req_SID, h->req_SIDLen) < 0) {
+			DPRINTF(E_DEBUG, L_HTTP, "Precondition Failed: upnpevents_removeSubscriber failed");
 			BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
-		else
+		} else
 			BuildResp_upnphttp(h, 0, 0);
 	}
 	SendResp_upnphttp(h);
