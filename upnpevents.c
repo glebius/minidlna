@@ -327,7 +327,7 @@ static void upnp_event_free_notify(struct upnp_event_notify *obj)
 	free(obj);
 }
 
-static void upnp_event_prepare(struct upnp_event_notify * obj)
+static int upnp_event_prepare(struct upnp_event_notify * obj)
 {
 	static const char notifymsg[] = 
 		"NOTIFY %s HTTP/1.1\r\n"
@@ -343,7 +343,7 @@ static void upnp_event_prepare(struct upnp_event_notify * obj)
 		"\r\n"
 		"%.*s\r\n";
 	char * xml;
-	int l;
+	int l, tosend;
 
 	assert(obj->sub);
 
@@ -359,16 +359,22 @@ static void upnp_event_prepare(struct upnp_event_notify * obj)
 		break;
 	default:
 		xml = NULL;
-		l = 0;
 	}
-	obj->tosend = asprintf(&(obj->buffer), notifymsg,
+	if (xml == NULL)
+		return -1;
+
+	tosend = asprintf(&(obj->buffer), notifymsg,
 	                       obj->path, obj->addrstr, obj->portstr, l+2,
 	                       obj->sub->uuid, obj->sub->seq,
 	                       l, xml);
-	obj->buffersize = obj->tosend;
 	free(xml);
+	if (obj->tosend == -1)
+		return -1;
+
+	obj->buffersize = obj->tosend = tosend;
 	DPRINTF(E_DEBUG, L_HTTP, "Sending UPnP Event response:\n%s\n", obj->buffer);
 	obj->state = ESending;
+	return 0;
 }
 
 static void upnp_event_send(struct upnp_event_notify * obj)
@@ -426,8 +432,11 @@ upnp_event_process_notify(struct event *ev)
 	switch(obj->state) {
 	case EConnecting:
 		/* now connected or failed to connect */
-		upnp_event_prepare(obj);
-		upnp_event_send(obj);
+		if (upnp_event_prepare(obj) < 0) {
+			DPRINTF(E_ERROR, L_HTTP, "Failed to allocate notify\n");
+			upnp_event_free_notify(obj);
+		} else
+			upnp_event_send(obj);
 		break;
 	case ESending:
 		upnp_event_send(obj);
