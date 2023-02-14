@@ -286,8 +286,6 @@ upnp_event_create_notify(struct subscriber *sub)
 	addr.sin_family = AF_INET;
 	inet_aton(obj->addrstr, &addr.sin_addr);
 	addr.sin_port = htons(port);
-	DPRINTF(E_DEBUG, L_HTTP, "'%s' %hu '%s'\n",
-	       obj->addrstr, port, obj->path);
 	obj->state = EConnecting;
 	if (connect(s, (struct sockaddr *)&addr, sizeof(addr)) < 0 &&
 	    errno != EINPROGRESS && errno != EWOULDBLOCK) {
@@ -301,6 +299,9 @@ upnp_event_create_notify(struct subscriber *sub)
 	sub->notify = obj;
 	LIST_INSERT_HEAD(&notifylist, obj, entries);
 
+	DPRINTF(E_DEBUG, L_HTTP, "Create obj: socket %d '%s' %hu '%s'\n",
+	       s, obj->addrstr, port, obj->path);
+
 	return;
 
 error:
@@ -311,6 +312,8 @@ error:
 
 static void upnp_event_free_notify(struct upnp_event_notify *obj)
 {
+
+	DPRINTF(E_DEBUG, L_HTTP, "Free obj: socket %d\n", obj->ev.fd);
 
 	event_module.del(&obj->ev, EV_FLAG_CLOSING);
 	close(obj->ev.fd);
