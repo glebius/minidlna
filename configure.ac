@@ -29,6 +29,7 @@ m4_ifdef([AC_USE_SYSTEM_EXTENSIONS], [AC_USE_SYSTEM_EXTENSIONS])
 AM_ICONV
 AM_GNU_GETTEXT([external])
 AM_GNU_GETTEXT_VERSION(0.18)
+AM_GNU_GETTEXT_REQUIRE_VERSION(0.18)
 
 # Checks for programs.
 AC_PROG_AWK
@@ -403,7 +404,7 @@ for dir in "" /usr/local $SEARCH_DIR; do
     AC_CHECK_LIB([exif], [exif_data_new_from_file], [LIBEXIF_LIBS="-lexif"], [unset ac_cv_lib_exif_exif_data_new_from_file; LDFLAGS="$LDFLAGS_SAVE"; continue])
     break
 done
-test x"$ac_cv_lib_jpeg_jpeg_set_defaults" = x"yes" || AC_MSG_ERROR([Could not find libexif])
+test x"$ac_cv_lib_exif_exif_data_new_from_file" = x"yes" || AC_MSG_ERROR([Could not find libexif])
 AC_SUBST(LIBEXIF_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
@@ -414,7 +415,10 @@ for dir in "" /usr/local $SEARCH_DIR; do
     AC_CHECK_LIB([id3tag -lz], [id3_file_open], [LIBID3TAG_LIBS="-lid3tag -lz"], [unset ac_cv_lib_id3tag_id3_file_open; LDFLAGS="$LDFLAGS_SAVE"; continue])
     break
 done
-test x"$ac_cv_lib_id3tag__lz___id3_file_open" = x"yes" || AC_MSG_ERROR([Could not find libid3tag])
+if test x"$ac_cv_lib_id3tag__lz___id3_file_open" != x"yes" &&
+   test x"$ac_cv_lib_id3tag__lz_id3_file_open" != x"yes"; then
+   AC_MSG_ERROR([Could not find libid3tag])
+fi
 AC_SUBST(LIBID3TAG_LIBS)
 
 LDFLAGS_SAVE="$LDFLAGS"
@@ -441,7 +445,8 @@ for dir in "" /usr/local $SEARCH_DIR; do
     break
 done
 if test x"$ac_cv_lib_avformat__lavcodec__lavutil__lz___av_open_input_file" != x"yes" &&
-   test x"$ac_cv_lib_avformat__lavcodec__lavutil__lz___avformat_open_input" != x"yes"; then
+   test x"$ac_cv_lib_avformat__lavcodec__lavutil__lz___avformat_open_input" != x"yes" &&
+   test x"$ac_cv_lib_avformat__lavcodec__lavutil__lz_avformat_open_input" != x"yes"; then
    AC_MSG_ERROR([Could not find libavformat - part of ffmpeg])
 fi
 AC_SUBST(LIBAVFORMAT_LIBS)
