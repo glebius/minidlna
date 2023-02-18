@@ -954,6 +954,10 @@ init(int argc, char **argv)
 		case 'S':
 			SETFLAG(SYSTEMD_MASK);
 			break;
+#elif defined(__FreeBSD__)
+		case 'S':
+			SETFLAG(SYSLOG_MASK);
+			break;
 #endif
 		case 'V':
 			printf("Version " MINIDLNA_VERSION "\n");
