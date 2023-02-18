@@ -25,6 +25,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef USE_SYSLOG
+#include <syslog.h>
+#endif
+
 #include "upnpglobalvars.h"
 #include "log.h"
 
@@ -56,16 +60,31 @@ const char *level_name[] = {
 	0
 };
 
+#ifdef USE_SYSLOG
+int syslog_level[] = {
+	LOG_DEBUG,				// E_OFF
+	LOG_ERR,				// E_FATAL
+	LOG_ERR,				// E_ERROR
+	LOG_WARNING,				// E_WARN
+	LOG_INFO,				// E_INFO
+	LOG_DEBUG,				// E_DEBUG
+	LOG_DEBUG				// E_MAXDEBUG
+};
+#endif
+
 void
 log_close(void)
 {
+#ifndef USE_SYSLOG
 	if (log_fp)
 		fclose(log_fp);
+#endif
 }
 
 void
 log_reopen(void)
 {
+#ifndef USE_SYSLOG
 	if (log_path[0] && log_fp)
 	{
 		char logfile[1048];
@@ -74,6 +93,7 @@ log_reopen(void)
 		log_fp = fopen(logfile, "a");
 		DPRINTF(E_INFO, L_GENERAL, "Reopened log file\n");
 	}
+#endif
 }
 
 int find_matching_name(const char* str, const char* names[])
@@ -97,7 +117,9 @@ int
 log_init(const char *debug)
 {
 	int i;
+#ifndef USE_SYSLOG
 	FILE *fp = NULL;
+#endif
 
 	int level = find_matching_name(debug, level_name);
 	int default_log_level = (level == -1) ? _default_log_level : level;
@@ -134,7 +156,7 @@ log_init(const char *debug)
 			} while (*lhs && *lhs==',');
 		}
 	}
-
+#ifndef USE_SYSLOG
 	if (log_path[0])
 	{
 		char logfile[1048];
@@ -143,6 +165,7 @@ log_init(const char *debug)
 			return -1;
 	}
 	log_fp = fp;
+#endif
 
 	return 0;
 }
@@ -151,10 +174,32 @@ void
 log_err(int level, enum _log_facility facility, char *fname, int lineno, char *fmt, ...)
 {
 	va_list ap;
+#ifdef USE_SYSLOG
+	static char *msgbuf = NULL;
+	static size_t msgbuf_size = 0;
+	size_t required;
+#endif
 
 	if (level && level>log_level[facility] && level>E_FATAL)
 		return;
 
+	// user log
+#ifdef USE_SYSLOG
+	for (;;) {
+		va_start(ap, fmt);
+		required = vsnprintf(msgbuf, msgbuf_size, fmt, ap) + 1;
+		va_end(ap);
+		if (required <= msgbuf_size)
+			break;
+		msgbuf = realloc(msgbuf, required);
+		msgbuf_size = required;
+	}
+
+	if (level)
+		syslog(syslog_level[level], "%s:%d: %s: %s", fname, lineno, level_name[level], msgbuf);
+	else
+		syslog(LOG_INFO, "%s:%d: %s", fname, lineno, msgbuf);
+#else
 	if (!log_fp)
 		log_fp = stdout;
 
@@ -185,6 +230,7 @@ log_err(int level, enum _log_facility facility, char *fname, int lineno, char *f
 	va_end(ap);
 
 	fflush(log_fp);
+#endif
 
 	if (level==E_FATAL)
 		exit(-1);
