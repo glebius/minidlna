@@ -391,6 +391,7 @@ static void upnp_event_recv(struct upnp_event_notify * obj)
 	DPRINTF(E_DEBUG, L_HTTP, "%s: (%dbytes) %.*s\n", "upnp_event_recv",
 	       n, n, obj->buffer);
 	obj->state = EFinished;
+	event_module.del(&obj->ev, 0);
 	if(obj->sub)
 	{
 		obj->sub->seq++;
