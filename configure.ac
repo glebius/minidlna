@@ -363,7 +363,7 @@ AC_COMPILE_IFELSE(
              #include <sys/uio.h>
          ],
          [
-             int fromfd=0, tofd=0, ret, total=0;
+             int fromfd=0, tofd=0, total=0, ret __unused;
              off_t offset=0, nwritten;
              struct sf_hdtr hdr;
              struct iovec hdtrl;
