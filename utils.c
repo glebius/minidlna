@@ -425,7 +425,7 @@ is_audio(const char * file)
 int
 is_image(const char * file)
 {
-	return (ends_with(file, ".jpg") || ends_with(file, ".jpeg"));
+	return (ends_with(file, ".jpg") || ends_with(file, ".jpeg") || ends_with(file, ".mpo"));
 }
 
 int
