@@ -14,7 +14,7 @@
 # License along with MiniDLNA; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
 # USA.
-AC_INIT(MiniDLNA,1.1.3,,minidlna)
+AC_INIT([MiniDLNA],[1.1.3],[],[minidlna])
 #LT_INIT
 
 AC_CANONICAL_TARGET
@@ -76,21 +76,21 @@ AC_SEARCH_LIBS([clock_gettime], [rt], [AC_DEFINE([HAVE_CLOCK_GETTIME], [1], [use
 # Check for struct ip_mreqn
 #
 AC_MSG_CHECKING(for struct ip_mreqn)
-AC_TRY_COMPILE([#include <netinet/in.h>], [
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[
     struct ip_mreqn mreq;
     mreq.imr_address.s_addr = 0;
-], [
+]])],[
     # Yes, we have it...
     AC_MSG_RESULT(yes)
     AC_DEFINE([HAVE_STRUCT_IP_MREQN],[],[Support for struct ip_mreqn])
-], [
+],[
     # We'll just have to try and use struct ip_mreq
     AC_MSG_RESULT(no)
     AC_MSG_CHECKING(for struct ip_mreq)
-    AC_TRY_COMPILE([#include <netinet/in.h>], [
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <netinet/in.h>]], [[
         struct ip_mreq mreq;
         mreq.imr_interface.s_addr = 0;
-    ], [
+    ]])],[
         # Yes, we have it...
         AC_MSG_RESULT(yes)
         AC_DEFINE([HAVE_STRUCT_IP_MREQ],[],[Support for struct ip_mreq])
@@ -670,6 +670,7 @@ case "$target_os" in
 esac
 
 
-AC_OUTPUT([ po/Makefile.in
+AC_CONFIG_FILES([ po/Makefile.in
 Makefile
 ])
+AC_OUTPUT
