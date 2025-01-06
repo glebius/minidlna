@@ -25,6 +25,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef __FreeBSD__
+#include <syslog.h>
+#endif
+
 #include "upnpglobalvars.h"
 #include "log.h"
 
@@ -56,6 +60,18 @@ const char *level_name[] = {
 	0
 };
 
+#ifdef __FreeBSD__
+int syslog_level[] = {
+	LOG_DEBUG,				// E_OFF
+	LOG_ERR,				// E_FATAL
+	LOG_ERR,				// E_ERROR
+	LOG_WARNING,				// E_WARN
+	LOG_INFO,				// E_INFO
+	LOG_DEBUG,				// E_DEBUG
+	LOG_DEBUG				// E_MAXDEBUG
+};
+#endif
+
 void
 log_close(void)
 {
@@ -66,7 +82,7 @@ log_close(void)
 void
 log_reopen(void)
 {
-	if (log_path[0] && log_fp)
+	if (!GETFLAG(SYSLOG_MASK) && log_path[0] && log_fp)
 	{
 		char logfile[1048];
 		snprintf(logfile, sizeof(logfile), "%s/" LOGFILE_NAME, log_path);
@@ -135,7 +151,7 @@ log_init(const char *debug)
 		}
 	}
 
-	if (log_path[0])
+	if (!GETFLAG(SYSLOG_MASK) && log_path[0])
 	{
 		char logfile[1048];
 		snprintf(logfile, sizeof(logfile), "%s/" LOGFILE_NAME, log_path);
@@ -151,40 +167,65 @@ void
 log_err(int level, enum _log_facility facility, char *fname, int lineno, char *fmt, ...)
 {
 	va_list ap;
+	static char *msgbuf = NULL;
+	static size_t msgbuf_size = 0;
+	size_t required;
 
 	if (level && level>log_level[facility] && level>E_FATAL)
 		return;
 
-	if (!log_fp)
-		log_fp = stdout;
-
-	// timestamp
-	if (!GETFLAG(SYSTEMD_MASK))
-	{
-		time_t t;
-		struct tm *tm;
-		t = time(NULL);
-		tm = localtime(&t);
-		fprintf(log_fp, "[%04d/%02d/%02d %02d:%02d:%02d] ",
-		        tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday,
-		        tm->tm_hour, tm->tm_min, tm->tm_sec);
-	}
-
-	if (level)
-		fprintf(log_fp, "%s:%d: %s: ", fname, lineno, level_name[level]);
-	else
-		fprintf(log_fp, "%s:%d: ", fname, lineno);
-
 	// user log
-	va_start(ap, fmt);
-	if (vfprintf(log_fp, fmt, ap) == -1)
-	{
-		va_end(ap);
-		return;
-	}
-	va_end(ap);
+	if (!GETFLAG(SYSLOG_MASK)) {
+		if (!log_fp)
+			log_fp = stdout;
 
-	fflush(log_fp);
+		// timestamp
+		if (!GETFLAG(SYSTEMD_MASK))
+		{
+			time_t t;
+			struct tm *tm;
+			t = time(NULL);
+			tm = localtime(&t);
+			fprintf(log_fp, "[%04d/%02d/%02d %02d:%02d:%02d] ",
+			    tm->tm_year+1900, tm->tm_mon+1, tm->tm_mday,
+			    tm->tm_hour, tm->tm_min, tm->tm_sec);
+		}
+
+		if (level)
+			fprintf(log_fp, "%s:%d: %s: ", fname, lineno, level_name[level]);
+		else
+			fprintf(log_fp, "%s:%d: ", fname, lineno);
+
+		// user log
+		va_start(ap, fmt);
+		if (vfprintf(log_fp, fmt, ap) == -1)
+		{
+			va_end(ap);
+			return;
+		}
+		va_end(ap);
+
+		fflush(log_fp);
+	} else {
+		va_start(ap, fmt);
+		required = vsnprintf(msgbuf, msgbuf_size, fmt, ap) + 1;
+		va_end(ap);
+
+		if (required > msgbuf_size) {
+			free(msgbuf);
+			msgbuf = malloc(required);
+			msgbuf_size = required;
+
+			va_start(ap, fmt);
+			(void)vsnprintf(msgbuf, msgbuf_size, fmt, ap);
+			va_end(ap);
+		}
+
+		if (level)
+			syslog(syslog_level[level], "%s:%d: %s: %s", fname, lineno, level_name[level], msgbuf);
+		else
+			syslog(LOG_INFO, "%s:%d: %s", fname, lineno, msgbuf);
+	}
 
 	if (level==E_FATAL)
 		exit(-1);
