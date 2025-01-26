@@ -54,7 +54,7 @@ int sys_sendfile(int sock, int sendfd, off_t *offset, off_t len)
 	ret = sendfile(sendfd, sock, *offset, nbytes, NULL, &len, 0);
 	*offset += len;
 
-	return ret;
+	return (ret == 0 ? len : 0);
 }
 
 #else
