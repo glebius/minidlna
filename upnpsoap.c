@@ -1581,7 +1581,7 @@ parse_search_criteria(const char *str, char *sep)
 					charcat(&criteria, '%');
 					like--;
 				}
-				charcat(&criteria, '"');
+				charcat(&criteria, '\'');
 				break;
 			case '\\':
 				if (strncmp(s, "\\&quot;", 7) == 0)
@@ -1624,7 +1624,7 @@ parse_search_criteria(const char *str, char *sep)
 				break;
 			case '"':
 				literal = 1;
-				charcat(&criteria, *s);
+				charcat(&criteria, '\'');
 				if (like == 2)
 				{
 					charcat(&criteria, '%');
@@ -1750,13 +1750,13 @@ parse_search_criteria(const char *str, char *sep)
 					if (strncmp(s, "object.", 7) == 0)
 					{
 						s += 7;
-						charcat(&criteria, '"');
+						charcat(&criteria, '\'');
 						while (*s && !isspace(*s))
 						{
 							charcat(&criteria, *s);
 							s++;
 						}
-						charcat(&criteria, '"');
+						charcat(&criteria, '\'');
 					}
 					class = 0;
 					continue;
