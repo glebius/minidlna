@@ -39,9 +39,9 @@ endif
 if HAVE_INOTIFY
   minidlnad_SOURCES += monitor_inotify.c
 else
-  if HAVE_KQUEUE
-    minidlnad_SOURCES += monitor_kqueue.c
-  endif
+if HAVE_KQUEUE
+  minidlnad_SOURCES += monitor_kqueue.c
+endif
 endif
 
 if HAVE_VORBISFILE
