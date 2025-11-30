@@ -1635,7 +1635,7 @@ parse_search_criteria(const char *str, char *sep)
 				if (strncmp(s, "&quot;", 6) == 0)
 				{
 					literal = 1;
-					strcatf(&criteria, "\"");
+					strcatf(&criteria, "\'");
 					if (like == 2)
 					{
 						charcat(&criteria, '%');
